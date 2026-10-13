@@ -11,9 +11,9 @@
     <description>A small Java HTTP service designed for a multi-stage Docker build.</description>
 
     <properties>
-        <maven.compiler.release>17</maven.compiler.release>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <junit.version>5.11.3</junit.version>
+        <maven.compiler.release>25</maven.compiler.release>
     </properties>
 
     <dependencies>

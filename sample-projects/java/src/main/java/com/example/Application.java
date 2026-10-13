@@ -13,7 +13,7 @@ public final class Application {
     }
 
     public static void main(String[] args) throws IOException {
-        int port = Integer.parseInt(System.getenv().getOrDefault("PORT", "8080"));
+        int port = Integer.parseInt(System.getenv().getOrDefault("PORT", "9090"));
         HttpServer server = HttpServer.create(new InetSocketAddress("0.0.0.0", port), 0);
         server.createContext("/", exchange -> respond(exchange,
                 200,
