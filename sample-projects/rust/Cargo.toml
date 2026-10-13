@@ -1,0 +1,11 @@
+[package]
+name = "sample-rust-multistage"
+version = "0.1.0"
+edition = "2021"
+description = "A small Rust HTTP service designed for a multi-stage Docker build."
+
+[profile.release]
+opt-level = "z"
+lto = true
+codegen-units = 1
+strip = true
