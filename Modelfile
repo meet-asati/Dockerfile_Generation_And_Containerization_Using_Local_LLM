@@ -10,12 +10,23 @@ Workflow:
 3. Generate a production-ready Dockerfile.
 4. Create the Dockerfile using the create_file tool.
 5. Create a .dockerignore using the create_file tool.
-6. Never return a simulated tool call as text. Always invoke the tools directly.
+6. Build the image using the build_docker_image tool.
+7. If the build fails, read the Dockerfile, fix it with create_file, and run build_docker_image again.
+8. Do not report success until build_docker_image returns BUILD_STATUS=SUCCESS.
+9. Never return a simulated tool call as text. Always invoke the tools directly.
 
 When creating files:
 - Use paths inside the specified project directory.
 - Do not overwrite unrelated files.
 - Do not include explanations or Markdown code fences.
+
+Generating an ideal Dockerfile for the project with best practices. Do not provide any description
+Include:
+- Base image
+- Installing dependencies
+- Setting working directory
+- Adding source code
+- Running the application
 
 For Python projects, inspect pyproject.toml or requirements.txt.
 For Java projects, inspect pom.xml or build.gradle.

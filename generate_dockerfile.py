@@ -24,9 +24,37 @@ def create_file(filename: str, content: str) -> str:
     except Exception as e:
         return f"Error creating file: {str(e)}"
 
+def build_docker_image(context: str, dockerfile: str, tag: str) -> str:
+    """Build a project image through the PowerShell Docker command runner."""
+    project_path = os.path.abspath(os.path.join(base_dir, context))
+    workspace_path = os.path.abspath(base_dir)
+
+    try:
+        if os.path.commonpath([workspace_path, project_path]) != workspace_path:
+            return "BUILD_STATUS=FAILURE\nError: project directory must be inside the workspace."
+
+        result = subprocess.run(
+            [
+                "powershell.exe",
+                "-ExecutionPolicy", "Bypass",
+                "-File", script_path,
+                f"docker build --progress=plain -f {dockerfile} -t {tag} ."
+            ],
+            cwd=project_path,
+            capture_output=True,
+            text=True
+        )
+    except OSError as error:
+        return f"BUILD_STATUS=FAILURE\nError starting Docker build: {error}"
+
+    output = "\n".join(part for part in (result.stdout, result.stderr) if part)
+    status = "SUCCESS" if result.returncode == 0 else "FAILURE"
+    return f"BUILD_STATUS={status}\nEXIT_CODE={result.returncode}\n{output}"
+
 tool_map = {
     'read_file': read_file,
-    'create_file': create_file
+    'create_file': create_file,
+    'build_docker_image': build_docker_image
 }
 
 def parse_text_tool_call(content: str):
@@ -84,6 +112,22 @@ tools = [
                 'required': ['filename', 'content']
             }
         }
+    },
+    {
+        'type': 'function',
+        'function': {
+            'name': 'build_docker_image',
+            'description': 'Build the Docker image for a project using Docker-CommandRunner.ps1. Retry after fixing the Dockerfile if the build fails.',
+            'parameters': {
+                'type': 'object',
+                'properties': {
+                    'context': {'type': 'string', 'description': 'The project directory relative to the workspace.'},
+                    'dockerfile': {'type': 'string', 'description': 'The Dockerfile name inside the project directory.'},
+                    'tag': {'type': 'string', 'description': 'The Docker image tag, for example sample-python-api:latest.'}
+                },
+                'required': ['context', 'dockerfile', 'tag']
+            }
+        }
     }
 ]
 
@@ -93,7 +137,7 @@ def generate_dockerfile(prompt):
             'content': prompt,
         }]
 
-    while True:
+    for _ in range(20):
         response = ollama.chat(
             model='docker-bot',
             messages=messages,
@@ -152,19 +196,9 @@ def generate_dockerfile(prompt):
                 'content': result
             })
 
+    else:
+        print("\nAssistant: Stopped after 20 tool calls without a final response.")
+
 
 if __name__ == '__main__':
     generate_dockerfile("Containerize the project in sample-projects/python.")
-    # prompt = input("Enter the query: ")
-    # output = generate_dockerfile(prompt)
-    # command = [
-    #     "powershell.exe",
-    #     "-ExecutionPolicy", "Bypass",
-    #     "-File", script_path,
-    #     output
-    # ]
-    # try:
-    #     result = subprocess.run(command, capture_output=True, text=True)
-    #     print(result.stdout)
-    # except subprocess.CalledProcessError as e:
-    #     print("PowerShell Error:\n", e.stderr)

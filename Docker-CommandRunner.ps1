@@ -9,10 +9,25 @@ function Docker-Runner {
     Write-Output "----------------------------------------"
     Write-Output "Running..."
 
+    $stdoutFile = [System.IO.Path]::GetTempFileName()
+    $stderrFile = [System.IO.Path]::GetTempFileName()
+
     try {
-        Invoke-Expression $Command | Out-String
+        $process = Start-Process -FilePath "cmd.exe" `
+            -ArgumentList "/d", "/s", "/c", $Command `
+            -WorkingDirectory (Get-Location) `
+            -RedirectStandardOutput $stdoutFile `
+            -RedirectStandardError $stderrFile `
+            -NoNewWindow -Wait -PassThru
+
+        Get-Content $stdoutFile
+        Get-Content $stderrFile
+        exit $process.ExitCode
     } catch {
         Write-Error "Failed to execute command: $_"
+        exit 1
+    } finally {
+        Remove-Item $stdoutFile, $stderrFile -ErrorAction SilentlyContinue
     }
 }
 
