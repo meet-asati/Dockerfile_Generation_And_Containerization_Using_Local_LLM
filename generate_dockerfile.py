@@ -1,27 +1,31 @@
 import ollama
+import os
+import subprocess
 
-PROMPT = """
-ONLY Generate an ideal Dockerfile for {language} with best practices. Do not provide any description
-Include:
-- Base image
-- Installing dependencies
-- Setting working directory
-- Adding source code
-- Running the application
-"""
+base_dir = os.path.dirname(os.path.abspath(__file__))
+script_path = os.path.join(base_dir, "Docker-CommandRunner.ps1")
 
-def generate_dockerfile(language):
+def generate_dockerfile(prompt):
     response = ollama.chat(
-        model='llama3.1:8b',
+        model='docker-bot',
         messages=[{
             'role': 'user',
-            'content': PROMPT.format(language=language)
+            'content': prompt
         }]
     )
     return response['message']['content']
 
 if __name__ == '__main__':
-    language = input("Enter the programming language: ")
-    dockerfile = generate_dockerfile(language)
-    print("\nGenerated Dockerfile:\n")
-    print(dockerfile)
+    prompt = input("Enter the query: ")
+    output = generate_dockerfile(prompt)
+    command = [
+        "powershell.exe",
+        "-ExecutionPolicy", "Bypass",
+        "-File", script_path,
+        output
+    ]
+    try:
+        result = subprocess.run(command, capture_output=True, text=True)
+        print(result.stdout)
+    except subprocess.CalledProcessError as e:
+        print("PowerShell Error:\n", e.stderr)
