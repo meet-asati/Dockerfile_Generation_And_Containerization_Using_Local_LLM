@@ -3,14 +3,67 @@ import json
 import os
 import re
 import subprocess
+import sys
+import tkinter as tk
+from tkinter import filedialog
 
 base_dir = os.path.dirname(os.path.abspath(__file__))
 script_path = os.path.join(base_dir, "Docker-CommandRunner.ps1")
+selected_project_path = None
+
+
+def choose_project_folder() -> str | None:
+    """Let the user choose a project folder, with a terminal fallback."""
+    if len(sys.argv) > 1:
+        project_path = os.path.abspath(sys.argv[1])
+    else:
+        try:
+            root = tk.Tk()
+            root.withdraw()
+            project_path = filedialog.askdirectory(
+                initialdir=os.path.join(base_dir, "sample-projects"),
+                title="Select the project to containerize"
+            )
+            root.destroy()
+        except tk.TclError:
+            project_path = input("Enter the project folder path: ").strip()
+
+        if not project_path:
+            return None
+        project_path = os.path.abspath(project_path)
+
+    if not os.path.isdir(project_path):
+        print(f"Project folder does not exist: {project_path}")
+        return None
+
+    try:
+        if os.path.commonpath([base_dir, project_path]) != base_dir:
+            print("Please select a project folder inside the workspace.")
+            return None
+    except ValueError:
+        print("Please select a project folder inside the workspace.")
+        return None
+
+    return project_path
+
+
+def resolve_project_file(filename: str) -> str:
+    """Resolve a tool file path inside the selected project."""
+    if selected_project_path is None:
+        raise RuntimeError("No project folder has been selected.")
+
+    project_file = os.path.abspath(
+        filename if os.path.isabs(filename)
+        else os.path.join(selected_project_path, filename)
+    )
+    if os.path.commonpath([selected_project_path, project_file]) != selected_project_path:
+        raise ValueError("File path must be inside the selected project folder.")
+    return project_file
 
 def read_file(filename: str) -> str:
     """Reads the content of a configuration file."""
     try:
-        with open(filename, 'r', encoding='utf-8') as f:
+        with open(resolve_project_file(filename), 'r', encoding='utf-8') as f:
             return f.read()
     except Exception as e:
         return f"Error reading file: {str(e)}"
@@ -18,7 +71,7 @@ def read_file(filename: str) -> str:
 def create_file(filename: str, content: str) -> str:
     """Creates a new Dockerfile or .dockerignore with the specified text content."""
     try:
-        with open(filename, 'w', encoding='utf-8') as f:
+        with open(resolve_project_file(filename), 'w', encoding='utf-8') as f:
             f.write(content)
         return f"Success: File '{filename}' created successfully."
     except Exception as e:
@@ -26,7 +79,10 @@ def create_file(filename: str, content: str) -> str:
 
 def build_docker_image(context: str, dockerfile: str, tag: str) -> str:
     """Build a project image through the PowerShell Docker command runner."""
-    project_path = os.path.abspath(os.path.join(base_dir, context))
+    if selected_project_path is None:
+        return "BUILD_STATUS=FAILURE\nError: no project folder has been selected."
+
+    project_path = selected_project_path
     workspace_path = os.path.abspath(base_dir)
 
     try:
@@ -121,7 +177,7 @@ tools = [
             'parameters': {
                 'type': 'object',
                 'properties': {
-                    'context': {'type': 'string', 'description': 'The project directory relative to the workspace.'},
+                    'context': {'type': 'string', 'description': 'The selected project directory. Use ".".'},
                     'dockerfile': {'type': 'string', 'description': 'The Dockerfile name inside the project directory.'},
                     'tag': {'type': 'string', 'description': 'The Docker image tag, for example sample-python-api:latest.'}
                 },
@@ -201,4 +257,14 @@ def generate_dockerfile(prompt):
 
 
 if __name__ == '__main__':
-    generate_dockerfile("Containerize the project in sample-projects/python.")
+    selected_project_path = choose_project_folder()
+    if selected_project_path is None:
+        print("No project selected. Exiting.")
+        sys.exit(0)
+
+    project_context = os.path.relpath(selected_project_path, base_dir).replace(os.sep, '/')
+    print(f"Selected project: {selected_project_path}")
+    generate_dockerfile(
+        f"Containerize the project in {project_context}. "
+        "Use paths relative to this project directory for all file tools."
+    )

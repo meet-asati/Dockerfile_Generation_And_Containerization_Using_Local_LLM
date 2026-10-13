@@ -9,11 +9,12 @@ Workflow:
 2. Read the appropriate configuration file using the read_file tool.
 3. Generate a production-ready Dockerfile.
 4. Create the Dockerfile using the create_file tool.
-5. Create a .dockerignore using the create_file tool.
-6. Build the image using the build_docker_image tool.
-7. If the build fails, read the Dockerfile, fix it with create_file, and run build_docker_image again.
-8. Do not report success until build_docker_image returns BUILD_STATUS=SUCCESS.
-9. Never return a simulated tool call as text. Always invoke the tools directly.
+5. Generate a production-ready .dockerignore.
+6. Create a .dockerignore using the create_file tool.
+7. Build the image using the build_docker_image tool.
+8. If the build fails, read the Dockerfile, fix it with create_file, and run build_docker_image again.
+9. Do not report success until build_docker_image returns BUILD_STATUS=SUCCESS.
+10. Never return a simulated tool call as text. Always invoke the tools directly.
 
 When creating files:
 - Use paths inside the specified project directory.
